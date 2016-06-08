@@ -1,0 +1,242 @@
+TITLE:: TouchOSC
+summary:: A tool for quickly mapping TouchOSC controls to SuperCollider.
+categories:: OSC
+
+DESCRIPTION::
+Map TouchOSC controls to ControlSpecs and forward those values on to evaluate functions, control objects or map to CtkNote synth parameters. The example at the bottom of the page provides detailed information.
+
+
+CLASSMETHODS::
+
+METHOD:: new
+
+ARGUMENT:: deviceIPString
+A code::String:: of the IP of the control device in TouchOSC's LOCAL IP ADDRESS field.
+
+ARGUMENT:: deviceIncomingPort
+An code::Integer::. TouchOSC's PORT (INCOMING) field
+
+ARGUMENT:: lockOnDeviceIP
+A code::Boolean::. If true, TouchOsc instance will only listen to that device. Default is code::true::.
+
+ARGUMENT:: verticalLayout
+A code::Boolean::. If true, TouchOSC's layout is vertical (portrait) orientation. This affects slider behavior. Default is code::false::.
+
+
+
+INSTANCEMETHODS::
+
+
+METHOD:: addCtl
+Add a control to the library of this TouchOSC instance.
+
+ARGUMENT:: name
+A code::Symbol::. A unique name given to this control. STRONG::Note: this is a key to a dictionary, so duplicate names will overwrite one another.::
+
+ARGUMENT:: kind
+A code::Symbol::.  The kind of TouchOSC control. Valid controls are currently: code::\fader::, code::\toggle::, code::\xy::, and code::\fader:: corresponding to available controls in the TouchOSC app. strong::Note:: exceptional haddling of the code::\multifader:: kind below;
+
+ARGUMENT:: oscTag
+A code::Symbol:: or code::nil::. A valid OSC tag as shown in the OSC panel of TouchOSC for the control you're mapping.  If set to nil, that triggers an auto-detect process that listens for the first incoming message from from your device. Therefor, if set to nil, touch the control you wish to map on your device immediately after executing this method.
+
+ARGUMENT:: spec
+A link::Classes/ControlSpec:: or code::nil::. The ControlSpec used to map the control's incoming values.  Note that if you're using a value label with your control, the value label will display the units of the control spec.
+
+ARGUMENT:: label
+Optional. A code::Symbol::, code::String:: or code::nil::. If using a name label with your control, this label will be displayed in TouchOSC. If code::nil::, the name label displays the strong::name:: argument from above.  This is useful if, for example, you have many parameter names you'd like display as identical, but because the strong::name:: are dictionary keys and must be unique, i.e. code::'mute1'::, code::'mute2'::, code::'mute3'::, you may use this strong::label:: argument to display each as simply code::"Mute"::.
+
+ARGUMENT:: postValue
+A code::Boolean::.  A flag specifying if you'd like a mesage sent to TouchOSC to display the control's value. Defaults to code::true::.
+
+
+METHOD:: remap
+Provide a new ControlSpec to which the control is mapped.
+
+ARGUMENT:: ctlName
+A code::Symbol::.  The name of the control that's being remapped.
+
+ARGUMENT:: controlSpec
+A link::Classes/ControlSpec::.  The new ControlSpec to which to the control will be mapped. The new ControlSpec isn't used by the current value, but rather once the control is touched and the value is mapped to the new range.
+
+
+METHOD:: connect
+Connect your control(s) to a function or a CtkNote synth parameter.
+
+ARGUMENT:: object
+The object to control. E.g. a code::CtkNote::. If the control target is a function to evaluate, this object is passed in as that function's first argument, so you can act on any object (for example calling any of it's methods) via the target function.
+
+ARGUMENT::  ... ctlNameTargetPairs
+Pairs of comma-separated strong::control names:: (specified when calling strong::.addCtl::) and strong::targets:: (functions or CtkNote params). If connecting to a function, the function will take the strong::object:: as its first parameter, followed by the mapped value from your control (e.g. a fader). See the example below.
+
+
+METHOD:: disconnect
+(describe method here)
+
+ARGUMENT::  ... controlNames
+One or more names of controls you'd like to disconnect from your object/model. Controls are still stored with their mappings, they just no longer control your object/model.
+
+
+METHOD:: disconnectAll
+Disconnect all controls from your object/model. Controls are still stored with their mappings, they just no longer control your object/model.
+
+
+METHOD:: free
+Free all the controls and remove the OSC responders.
+
+
+
+EXAMPLES::
+
+code::
+/*
+
+Using the TouchOSC class.
+
+For this example, create 2 faders in the TouchOSC layout app. Also add 2 text labels for each fader. One will be set to your control name, the other will be updated with the control's value as you change it.
+
+You can choose your own OSC tag for the faders, or for convenience leave their OSC tag set to "auto" in the TouchOSC layout editor app if you don't want to name each control yourself. However, you'll need to make sure the labels' OSC tags match that of your control widget (e.g. the fader), then append '_L' and '_V' to the OSC tags for the "label" and "value" labels, respectively.
+NOTE: The TouchOSC layout app appends "/#" to the multifader OSC tag, where # is the fader index in the bank of faders.  For Value labels to respond properly to each fader value, in the Label's OSC tag add "_#_V", where # is the fader index (1-based).
+
+For example, if you fader's OSC tag was auto-named '/1/fader1', you'll need to set your label name's OSC tag to '/1/fader1_L', and the value label's OSC tag to '/1/fader1_V'.
+
+If your MULTIfader's tag was auto-named '/1/multifader1', you'll need to set your faders' value label OSC tags to '/1/multifader1_#_V', and the value label's OSC tag to '/1/fader1_V'.
+
+
+*** Sync'ing your layout to your iOS device ***
+
+1) Create a network from your computer (see network icon in menu bar).
+
+2) Connect to this network on the ipad.
+
+3) Once the layout is finalized in the Editor, click the 'Sync' button.
+
+4) Open the TouchOSC app, navigat to 'LAYOUT' > ADD. Your layout should sync with TouchOSC Editor. If not, make sure your iOS device is on the same network as your computer running TouchOSC Editor.
+
+5) Select it to load it. Navigate back in the menu and click 'Done'. You should see your layout.
+
+
+*** Setting up proper OSC connections ***
+
+1) If you just connected to your computer's network, and if TouchOSC was already open, relaunch the app (good practice in general).
+
+2) In TouhOSC navigate to CONNECTIONS > OSC. Enter your computer's IP address in the HOST field, in PORT (outgoing) enter 57120 (SC's default)
+
+3) Proceed below to instantiate a TouchOsc in SC.
+
+*/
+
+// start 2 synths to control
+(
+s.waitForBoot({
+	fork {
+
+		/* the object you want to control with your TouchOSC GUI */
+		d = CtkSynthDef(\OSCTest, {
+			arg outbus=2, synthfreq=300, amp=0.5;
+			Out.ar(outbus, SinOsc.ar(synthfreq, mul: amp));
+		});
+
+		s.sync;
+		~synth1 = d.note.outbus_(2).play;
+		~synth2 = d.note.outbus_(3).play;
+	};
+	s.scope(2, 2);
+});
+)
+
+// Note: navigate to TouchOSC's CONNECTIONS > OSC tab for OSC connection info.
+
+~tosc_1 = TouchOSC( "169.254.170.208", 9000 );
+
+// for some feedback when you're mapping controls, you can set debug to true (set before mapping)
+~tosc_1.debug_(true);
+
+// ADD controls
+
+(
+// give your fader a name, map it to a gain range
+~tosc_1.addCtl(
+	name: \gain1,   // unique name
+	kind: \fader,   // \toggle, \fader, or \xy
+	oscTag: nil,    // auto-detect
+	spec: ControlSpec(-80,3,\db,0,0,"dB"), // "units" will be displayed in TouchOSC
+	label: "myGain" // optional label to display instead of 'name' above
+)
+)
+// Now touch the fader you want to use for gain...
+
+// You should see the label and values update. If an incoming control message isn't caught in 5 seconds, it times out and you need to .addCtl again.
+
+// Now map your next fader to \freq1
+~tosc_1.addCtl(\freq1, \fader, nil, ControlSpec(300, 5000, \exp, units: "Hz"));
+
+// Touch the fader you want to use for freq...
+
+
+/*
+Your device is now sending values within the specified range! Though the fader isn't yet controlling your synth yet, you need to "connect" your controller (TouchOSC) to objects, in this case the above synths.
+
+You can connect your controls to a function or a CtkNote synth parameter. If connecting to a function, the function will take the object as its first parameter, followed by the mapped value from your control (fader).
+
+Connect your \gain1 fader to a target function, and connect your \freq1 fader to the CtkNote's freq arg. This functionality works specifically with CtkNotes (using .set under the hood).
+*/
+
+
+// .connect args:
+// 		object (the object to control),
+// 		... pairs of control names (specified above with .addCtl) and targets (functions or CtkNote params), comma separated
+
+(
+~tosc_1.connect( ~synth1,
+	\gain1,
+		// function to evaluate when receiving a \gain1 control message
+		// note: obj is ~synth1
+		{|obj, val| obj.amp_(val.dbamp)},
+
+	\freq1,
+		// parameter in ~synth1 to forward \freq1 message value to
+		\synthfreq
+)
+)
+
+// you can remap the range of the control on the fly
+~tosc_1.remap(\gain1, ControlSpec(-35,-0.5,'db',units:"dB"))
+
+// disconnect the \gain1 fader from the object
+~tosc_1.disconnect(\gain1, \freq1)
+
+
+
+/*
+For collaborative fun...
+Add a second device and another instance of TouchOSC to respond to it.
+*/
+
+~tosc_2 = TouchOSC( "169.254.170.209", deviceIncomingPort: 9000, lockOnDeviceIP: true);
+~tosc_2.debug_(true);
+
+// ADD controls: map your faders to freq and gain
+~tosc_2.addCtl(\gain2, \fader, nil, ControlSpec(-80,-0.5,\db,0,0,"dB"))
+~tosc_2.addCtl(\freq2, \fader, nil, ControlSpec(300, 5000, \exp, units: "Hz"));
+
+// connect \freq2 OSC control to \synthfreq parameter of ~synth2
+~tosc_2.connect( ~synth2, \freq2, \synthfreq)
+
+// connect \gain2 OSC control to amp of the synth via the function
+~tosc_2.connect( ~synth2, \gain2, {|obj, val| obj.amp_(val.dbamp)});
+~tosc_2.disconnect( \gain2 ); // disconnect from object, though still mapped by its ControlSpec
+
+// send \gain2 amp control to the first synth instead
+// (the former mapping of \gain2 is removed)
+~tosc_2.connect( ~synth1, \gain2, {|obj, val| obj.amp_(val.dbamp)});
+// now both \gain1 and \gain2 can chaing ~synth1's amplitude
+
+
+/* clean up */
+
+~tosc_1.free
+~tosc_2.free
+
+~synth1.free
+~synth2.free
+::

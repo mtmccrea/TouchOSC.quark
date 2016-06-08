@@ -1,0 +1,60 @@
+{\rtf1\ansi\ansicpg1252\cocoartf1038\cocoasubrtf350
+{\fonttbl\f0\fnil\fcharset0 Monaco;}
+{\colortbl;\red255\green255\blue255;\red191\green0\blue0;\red0\green0\blue0;\red0\green0\blue191;
+\red96\green96\blue96;\red0\green115\blue0;}
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\ql\qnatural\pardirnatural
+
+\f0\fs22 \cf2 /*\
+TouchOSC Setup\
+\
+Create a network in the wireless dropdown menu (preferred to retain network settings upon multiple sessions, but you could alternatively just use a common wireless network).  Give your computer a minute to generate it's own IP.\
+\
+In your network settings on the iPad, make sure you're on the same network as your host computer.  Likewise, give it a minute to switch networks and generate an IP.\
+\
+In the iPad's TouchOSC > Network tab, enter your host IP. \
+\
+In the TouchOSC app on your computer, with the GUI up in the app, click "Sync". A dialog pops up telling you it's broadcasting. \
+\
+Back in TouchOSC, click Layout > Add.  Select "Editor Host" with the appropriate IP.  It will automatically add whatever GUI your host's app is broadcasting, and if it's an update, it'll ask you if you want to overwrite the one on your iPad: yes.\
+\
+Once loaded, select it on the Layout gui list. Hit "done" from the TouchOSC page. You should see the app.  Then continue below...\
+\
+Note: If TouchOsc is already open on your iPad before you create your own network or change network preferences, you may need to exit and re-open the app, or toggle between TouchOSC's network page to remind it that settings have changed, sometimes it's quirky but not a big deal once you get a feel for it.  \
+*/\cf3 \
+\
+\
+s = \cf4 Server\cf3 .internal.boot;\
+s.scope;\
+\
+\cf2 // The only arg is your iPad's local IP. Be sure it's a String\cf3 \
+t = \cf4 TouchSC\cf3 .new(\cf5 "169.254.35.70"\cf3 ); \
+\
+\cf2 // what controls do I have?\cf3 \
+t.controlNames\
+\cf2 // access the attributes of each control\cf3 \
+t.getAttributes(\cf6 'amp'\cf3 )\
+t.getAttributes(\cf6 'amp'\cf3 ).spec\
+t.getAttributes(\cf6 'amp'\cf3 ).rcvtag\
+t.getAttributes(\cf6 'amp'\cf3 ).sndtag\
+t.getAttributes(\cf6 'amp'\cf3 ).action\
+\
+t.controls.amp.spec.default\
+\
+\cf2 /* access */\cf3 \
+t.synth\
+t.group \
+t.iPadAddr\
+t.myIP\
+t.controls \cf2 // the dictionary\cf3 \
+\
+\
+t.free \cf2 // be sure to free it to clean up the responders\
+\
+/*\
+Further structures not demonstrated here...\
+\
+I've also built some things that could be useful for more involved iPad usage, such as real-time updating of control spec parameters, etc. that could be useful for things like tuning instruments from the iPad instead of having to restart the process every time you want to change parameter ranges of faders, etc.\
+\
+The "action" attribute of each control is pretty simple in this class example.  This stucture becomes more useful as you begin to have single controls change multiple parameters or effect the instrument(s') state, as well as updating GUI states.\
+\
+*/}
