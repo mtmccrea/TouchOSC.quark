@@ -48,6 +48,9 @@ Optional. A code::Symbol::, code::String:: or code::nil::. If using a name label
 ARGUMENT:: postValue
 A code::Boolean::.  A flag specifying if you'd like a mesage sent to TouchOSC to display the control's value. Defaults to code::true::.
 
+ARGUMENT:: roundPost
+A code::Float:: or code::Integer:: specifying the resolution of the control value to display in a value label. Behaves like the code::.round():: method. Default (code::nil::) round 2 decimal places (code::0.01::).
+
 
 METHOD:: remap
 Provide a new ControlSpec to which the control is mapped.
@@ -66,7 +69,12 @@ ARGUMENT:: object
 The object to control. E.g. a code::CtkNote::. If the control target is a function to evaluate, this object is passed in as that function's first argument, so you can act on any object (for example calling any of it's methods) via the target function.
 
 ARGUMENT::  ... ctlNameTargetPairs
-Pairs of comma-separated strong::control names:: (specified when calling strong::.addCtl::) and strong::targets:: (functions or CtkNote params). If connecting to a function, the function will take the strong::object:: as its first parameter, followed by the mapped value from your control (e.g. a fader). See the example below.
+Pairs of comma-separated control names and targets.
+A control name is the key code::Symbol:: given to the control when calling code::.addCtl::.
+A targets is a code::Symbol:: of a method which the strong::object:: will respond to (be sure to include underscores "code::_::" for setters when appropriate), or
+a code::CtkNote:: parameter (as a code::Symbol::), or
+a code::Function::, which will take the strong::object:: as its first argument, followed by the mapped value from your control.
+See the example below.
 
 
 METHOD:: disconnect

@@ -20,7 +20,7 @@ TouchOSC {
 		TouchOSC.uniqueIDs ?? {TouchOSC.uniqueIDs = []};
 	}
 
-	addCtl { | name, kind, oscTag, spec, label, postValue=true |
+	addCtl { | name, kind, oscTag, spec, label, postValue=true, roundPost |
 		var tag, ctl, oscDefName;
 
 		oscTag.notNil.if({
@@ -28,13 +28,13 @@ TouchOSC {
 
 			oscDefName = this.getUniqueOscDefName(name.asSymbol);
 			this.prCheckDuplicateControlName(oscDefName, name.asSymbol);
-
 			this.prCheckDuplicateResponderTags(tag);
 
 			ctl = TouchOSCControl(this,
 				// name.asSymbol, kind, tag, spec, label, postValue,
 				oscDefName, kind, tag, spec, label, postValue,
-				if(lockOnDeviceIP,{devSndAddr},{nil})
+				if(lockOnDeviceIP,{devSndAddr},{nil}),
+                roundPost
 			);
 
 			// store in TouchOSC object by name (not it's unique OSCdef name)
@@ -59,7 +59,8 @@ TouchOSC {
 					ctl = TouchOSCControl(this,
 						// name.asSymbol, kind, tag, spec, label, postValue,
 						oscDefName, kind, tag, spec, label, postValue,
-						if(lockOnDeviceIP,{devSndAddr},{nil})
+						if(lockOnDeviceIP,{devSndAddr},{nil}),
+                        roundPost
 					);
 
 					// store in TouchOSC object by name
@@ -75,18 +76,33 @@ TouchOSC {
 		ctlNameTargetPairs.clump(2).do{|pairs,i|
 			var ctlname, target, ctl, action;
 
-			#ctlname, target = pairs; // target is the function or synth param name
+			#ctlname, target = pairs;         // target is the function or synth param name
 			ctl = controls[ctlname.asSymbol]; // the control's dictionary
 			ctl.notNil.if({
 				block { |break|
 					action = switch( target.class,
 						Symbol, {
-							{|widgetVal| object.set(0, target, widgetVal)}
+                            if (object.isKindOf(CtkNode)) {
+                                {|widgetVal| object.set(0, target, widgetVal)}
+                            }{
+                                if (object.respondsTo(target)) {
+                                    if (object.isKindOf(View)) {
+                                        { |widgetVal| defer {object.perform(target, widgetVal)} } // return a func, deferred for gui objects
+                                    }{
+                                        { |widgetVal| object.perform(target, widgetVal) } // return a func
+                                    }
+                                }{
+                                    break.(
+                                        format("object doesn't respond to %", target).warn
+                                    )
+                                }
+                            }
 						},
 						Function, {
 							{|widgetVal| target.(object, widgetVal)}
 						},
-						{ break.("control target isn't a synth parameter or a function".warn)
+						{ // default
+                            break.("control target isn't a synth parameter or a function".warn)
 						}
 					);
 					ctl.action_(action);
@@ -127,7 +143,12 @@ TouchOSC {
 
 		if(controls.keys.includes(ctlname), {
 			warnTest = true;
-			msg = msg + format("% was already in use by this instance of TouchOsc and its controls may have already been mapped to a synth or object parameter.", ctlname);
+			msg = msg + format(
+                    "% was already in use by this instance of TouchOsc "
+                    "and its controls may have already been mapped to a "
+                    "synth or object parameter.",
+                    ctlname
+                );
 
 			if(controls[ctlname].connected,
 				{
@@ -156,7 +177,10 @@ TouchOSC {
 				block {|break|
 					if( ipMatchFail,
 						{
-							break.("ip doesn't match this instance of TouchOSC, map again with the correct device IP".warn)
+							break.(
+                                warn("ip doesn't match this instance of TouchOSC, "
+                                    "map again with the correct device IP")
+                            )
 						},{
 							tag = msg[0].asSymbol;
 							postf("Tag received: %\n", msg[0].asSymbol);
@@ -192,7 +216,9 @@ TouchOSC {
 				{ format("This instance's controls use it: %.", localDuplicates.keys) },
 				{ "Not in use, however, by this _instance_ of TouchOsc." }
 			);
-			warn("This control's OSC tag is already in use."+dupMsg+"Multiple responders may react to single controls. Consider changing this control's OSC tag ('name')\n");
+			warn("This control's OSC tag is already in use."
+                + dupMsg + "Multiple responders may react to single controls. "
+                "Consider changing this control's OSC tag ('name')\n");
 		};
 	}
 
@@ -210,7 +236,6 @@ TouchOSC {
 		}
 	}
 
-	// not yet implemented
 	getUniqueOscDefName { |name|
 
 		// make sure this instance has a uniqueID assigned
@@ -220,7 +245,8 @@ TouchOSC {
 			while( {this.class.uniqueIDs.includes(cnt) and: (cnt<=100)}, { cnt = cnt+1 });
 
 			(cnt > 100).if{
-				warn("unique name not found in 100 tries, likely overwriting another or some other problem.")};
+				warn("unique name not found in 100 tries, likely overwriting another or some other problem.")
+            };
 
 			uniqueID = cnt;
 			this.class.uniqueIDs = this.class.uniqueIDs.add(uniqueID);
@@ -240,11 +266,11 @@ TouchOSC {
 
 TouchOSCControl {
 	//copyArgs
-	var <tOSC, <name, <kind, <oscTag, <>spec, <label, <postValue, <devSndAddr;
+	var <tOSC, <name, <kind, <oscTag, <>spec, <label, <postValue, <devSndAddr, <>roundPost;
 	var <action, <>connected, <>mapFunc, <>responder, <labelTag;
 
-	*new {|aTouchOSC, name, kind, oscTag, spec, label, postValue=true, devSndAddr|
-		^super.newCopyArgs(aTouchOSC, name, kind, oscTag, spec, label, postValue, devSndAddr).init;
+	*new {|aTouchOSC, name, kind, oscTag, spec, label, postValue=true, devSndAddr, roundPost|
+		^super.newCopyArgs(aTouchOSC, name, kind, oscTag, spec, label, postValue, devSndAddr, roundPost).init;
 	}
 
 	init {
@@ -263,6 +289,8 @@ TouchOSCControl {
 		// TODO: strip unique ID from name for the label update message
 		tOSC.devRcvAddr.sendMsg( labelTag, (label ?? name).asString );
 
+        roundPost = roundPost ?? 0.01;
+
 		spec ?? {spec = ControlSpec()};
 		this.setMappingResponder;
 	}
@@ -272,12 +300,13 @@ TouchOSCControl {
 			var inval, mappedval;
 
 			switch( kind,
-				\push,		{ inval = msg[1] },
-				\toggle,	{ inval = msg[1] },
-				\fader,		{ inval = msg[1] },
+				\push,      { inval = msg[1] },
+				\toggle,    { inval = msg[1] },
+				\fader,     { inval = msg[1] },
+				\rotary,    { inval = msg[1] },
 				\multifader,{ inval = msg[1] },
-				\multipush,	{ inval = msg[1] },
-				\xy,		{ inval = if( tOSC.verticalLayout,
+				\multipush, { inval = msg[1] },
+				\xy,        { inval = if( tOSC.verticalLayout,
 					{ [msg[1], 1-msg[2]] },
 					{ [msg[2], msg[1]] }
 				)
@@ -301,7 +330,7 @@ TouchOSCControl {
 				);
 
 				tOSC.devRcvAddr.sendMsg( resptag,
-					mappedval.round(0.001).asString+spec.units
+					mappedval.round(roundPost).asString+spec.units
 			)};
 			mappedval; // returned the mapped value from the function
 		};
