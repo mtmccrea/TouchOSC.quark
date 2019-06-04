@@ -1,5 +1,5 @@
 (
-  name: "TouchOSC.quark",
+  name: "TouchOSC",
   summary: "A tool for quickly mapping TouchOSC controls to SuperCollider",
   version: "1.0",
   schelp: "TouchOSC.schelp",
