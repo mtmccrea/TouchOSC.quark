@@ -268,6 +268,7 @@ TouchOSCControl {
 	//copyArgs
 	var <tOSC, <name, <kind, <oscTag, <>spec, <label, <postValue, <devSndAddr, <>roundPost;
 	var <action, <>connected, <>mapFunc, <>responder, <labelTag;
+	var <value;
 
 	*new {|aTouchOSC, name, kind, oscTag, spec, label, postValue=true, devSndAddr, roundPost|
 		^super.newCopyArgs(aTouchOSC, name, kind, oscTag, spec, label, postValue, devSndAddr, roundPost).init;
@@ -319,25 +320,28 @@ TouchOSCControl {
 				"TouchOsc reading message from: %\nmapping: % > %\n",
 				addr, inval.round(0.0001), mappedval.round(0.0001)) };
 			postValue.if{
-				var resptag;
-
-				resptag = if( kind == \multifader,
-					{ var str;
-						str = oscTag.asString;
-						(str.replaceAt("_", str.findBackwards("/"))++'_V').asSymbol
-					},
-					{ (oscTag++'_V').asSymbol }
-				);
-
-				tOSC.devRcvAddr.sendMsg( resptag,
-					mappedval.round(roundPost).asString+spec.units
-			)};
+				this.prPostValue(mappedval);
+			};
 			mappedval; // returned the mapped value from the function
 		};
 
 		OSCdef(name).free; // just in case, see SC bug described below
 		responder = OSCdef(name, mapFunc, oscTag, devSndAddr);
 		connected = false;
+	}
+
+	prPostValue { |val|
+		var resptag;
+		val !? {
+			resptag = if( kind == \multifader, { var str;
+				str = oscTag.asString;
+				(str.replaceAt("_", str.findBackwards("/"))++'_V').asSymbol
+			}, {
+				(oscTag++'_V').asSymbol
+			});
+
+			tOSC.devRcvAddr.sendMsg(resptag, val.round(roundPost).asString+spec.units)
+		};
 	}
 
 	action_ { |aFunction|
@@ -353,11 +357,29 @@ TouchOSCControl {
 				// forward args to original mapfunc to get
 				// the control's mapped value
 				widgetVal = mapFunc.(msg, time, addr, recvPort);
+				value = widgetVal;
 				action.(widgetVal);
 			},
 			oscTag, devSndAddr
 		);
 		connected = true;
+	}
+
+	value_ { |newVal|
+		tOSC.devRcvAddr.sendMsg(oscTag, spec.unmap(newVal));
+		postValue.if{
+			this.prPostValue(newVal);
+		};
+		value = newVal;
+	}
+
+	valueAction {
+		this.valueAction_(nil)
+	}
+
+	valueAction_ { |newVal|
+		newVal !? {this.value_(newVal)};
+		action.(value);
 	}
 
 	remap { |controlSpec|
