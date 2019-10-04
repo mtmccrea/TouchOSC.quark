@@ -373,13 +373,14 @@ TouchOSCControl {
 		value = newVal;
 	}
 
+	// this will trigger the action with the current value, as long as the current value is not nil
 	valueAction {
 		this.valueAction_(nil)
 	}
 
 	valueAction_ { |newVal|
 		newVal !? {this.value_(newVal)};
-		action.(value);
+		value !? {action.(value)};
 	}
 
 	remap { |controlSpec|
