@@ -3,7 +3,7 @@
   summary: "A tool for quickly mapping TouchOSC controls to SuperCollider",
   version: "1.0",
   schelp: "TouchOSC.schelp",
-  dependencies: ['Ctk'],
+  dependencies: ["Ctk"],
   license: "GNU GPL v3.0",
   copyright: "mtmccrea",
   ext_dependency: "",
