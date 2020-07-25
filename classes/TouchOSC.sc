@@ -270,6 +270,8 @@ TouchOSCControl {
 	var <action, <>connected, <>mapFunc, <>responder, <labelTag;
 	var <value;
 
+	classvar <>sendDefaultValue = true;
+
 	*new {|aTouchOSC, name, kind, oscTag, spec, label, postValue=true, devSndAddr, roundPost|
 		^super.newCopyArgs(aTouchOSC, name, kind, oscTag, spec, label, postValue, devSndAddr, roundPost).init;
 	}
@@ -294,6 +296,8 @@ TouchOSCControl {
 
 		spec ?? {spec = ControlSpec()};
 		this.setMappingResponder;
+
+		sendDefaultValue.if({this.value_(spec.default)});
 	}
 
 	setMappingResponder {
